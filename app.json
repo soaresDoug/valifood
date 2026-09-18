@@ -1,25 +1,73 @@
 {
   "expo": {
-    "name": "valifood",
+    "name": "ValiFood",
     "slug": "valifood",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "primaryColor": "#085D38",
+    "scheme": "valifood",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F7FAF8"
+    },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "app.valifood.mobile",
+      "infoPlist": {
+        "NSCameraUsageDescription": "O ValiFood usa a câmera para ler o código de barras dos produtos e para tirar a foto do alimento.",
+        "NSPhotoLibraryUsageDescription": "O ValiFood acessa suas fotos para você escolher a imagem do produto."
+      }
     },
     "android": {
+      "package": "app.valifood.mobile",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#085D38",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "permissions": ["android.permission.SCHEDULE_EXACT_ALARM", "android.permission.POST_NOTIFICATIONS", "android.permission.VIBRATE"],
+      "predictiveBackGestureEnabled": false,
+      "edgeToEdgeEnabled": true
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-sqlite",
+      "expo-font",
+      "@react-native-community/datetimepicker",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "O ValiFood usa a câmera para ler o código de barras dos produtos.",
+          "recordAudioAndroid": false,
+          "barcodeScannerEnabled": true
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#4CAF50",
+          "defaultChannel": "valifood-expiry",
+          "icon": "./assets/notification-icon.png"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "O ValiFood acessa suas fotos para você escolher a imagem do produto.",
+          "cameraPermission": "O ValiFood usa a câmera para fotografar o produto."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "00000000-0000-0000-0000-000000000000"
+      }
     }
   }
 }
