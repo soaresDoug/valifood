@@ -63,11 +63,6 @@
           "cameraPermission": "O ValiFood usa a câmera para fotografar o produto."
         }
       ]
-    ],
-    "extra": {
-      "eas": {
-        "projectId": "00000000-0000-0000-0000-000000000000"
-      }
-    }
+    ]
   }
 }
