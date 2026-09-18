@@ -15,6 +15,7 @@ import {
   countScheduledNotifications,
   getNotificationsUnavailableReason,
   isNotificationPermissionGranted,
+  scheduleTestNotification,
 } from '../services/notifications';
 import { useProductStore } from '../store/useProductStore';
 import { useSettingsStore } from '../store/useSettingsStore';
@@ -36,6 +37,7 @@ export function NotificationSettingsScreen({ navigation }: Props) {
   const lastRebuild = useProductStore((state) => state.lastRebuild);
   const [pending, setPending] = useState<number | null>(null);
   const [rescheduling, setRescheduling] = useState(false);
+  const [testScheduledAt, setTestScheduledAt] = useState<Date | null>(null);
   const preview = buildNotificationPreview();
 
   const loadPending = useCallback(async () => {
@@ -146,6 +148,22 @@ export function NotificationSettingsScreen({ navigation }: Props) {
         loading={rescheduling}
         onPress={handleReschedule}
       />
+      <View style={styles.spacer} />
+      <Button
+        label="Disparar lembrete de teste (1 min)"
+        icon="bell-ring-outline"
+        onPress={async () => {
+          const when = await scheduleTestNotification(1);
+          setTestScheduledAt(when);
+        }}
+      />
+      {testScheduledAt ? (
+        <AppText variant="caption" color={colors.textSecondary} center style={styles.note}>
+          Teste agendado para {testScheduledAt.getHours()}:
+          {`${testScheduledAt.getMinutes()}`.padStart(2, '0')}. Pode fechar o app — a
+          notificação chega mesmo assim.
+        </AppText>
+      ) : null}
       <AppText variant="caption" color={colors.textSecondary} center style={styles.note}>
         Ao tocar em um lembrete o ValiFood abre direto nos detalhes do produto. Lembretes de
         itens consumidos, descartados ou excluídos são cancelados automaticamente.
@@ -188,5 +206,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
     ...shadows.card,
   },
+  spacer: { height: spacing.md },
   note: { marginTop: spacing.md },
 });

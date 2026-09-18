@@ -29,7 +29,13 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "permissions": ["android.permission.SCHEDULE_EXACT_ALARM", "android.permission.POST_NOTIFICATIONS", "android.permission.VIBRATE"],
+      "permissions": [
+        "android.permission.SCHEDULE_EXACT_ALARM",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.VIBRATE",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ],
       "predictiveBackGestureEnabled": false,
       "edgeToEdgeEnabled": true
     },
@@ -63,6 +69,12 @@
           "cameraPermission": "O ValiFood usa a câmera para fotografar o produto."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "aaea93a3-59af-43b0-a298-d666f29f0ca1"
+      }
+    },
+    "owner": "soaresd"
   }
 }

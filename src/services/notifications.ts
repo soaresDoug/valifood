@@ -303,6 +303,37 @@ export async function rebuildAllSchedules(
   return { byProduct, totalScheduled, dropped };
 }
 
+/**
+ * Agenda uma notificacao de teste ~1 minuto a partir de agora.
+ * Usada para validar o pipeline de notificacao sem esperar a agenda real.
+ */
+export async function scheduleTestNotification(
+  delayMinutes = 1
+): Promise<Date | null> {
+  const module = notifications();
+  if (!module) return null;
+  const when = new Date(Date.now() + delayMinutes * 60_000);
+  try {
+    await module.scheduleNotificationAsync({
+      content: {
+        title: 'ValiFood — teste de notificacao',
+        body: 'Se voce esta vendo isso, os lembretes locais estao funcionando!',
+        sound: 'default',
+        data: { [NOTIFICATION_DATA_KEY]: true, kind: 'test' },
+      },
+      trigger: {
+        type: module.SchedulableTriggerInputTypes.DATE,
+        date: when,
+        channelId: NOTIFICATION_CHANNEL_ID,
+      },
+    });
+    return when;
+  } catch (error) {
+    console.warn('[notifications] falha ao agendar lembrete de teste', error);
+    return null;
+  }
+}
+
 /** Exemplos usados na tela de notificacoes (preview do design). */
 export function buildNotificationPreview(now: Date = new Date()): Array<{
   title: string;
