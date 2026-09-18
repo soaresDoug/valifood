@@ -10,8 +10,6 @@ vençam esquecidos na despensa. Fluxo central:
 Implementação da especificação técnica v1 (`valifood-spec.md`) seguindo o design
 de referência (12 telas + paleta + tipografia Inter).
 
----
-
 ## 1. Stack
 
 | Camada | Tecnologia |
@@ -20,20 +18,20 @@ de referência (12 telas + paleta + tipografia Inter).
 | Navegação | `@react-navigation/native-stack` + `bottom-tabs` |
 | Scanner | `expo-camera` (`CameraView` + `onBarcodeScanned`) — `expo-barcode-scanner` foi removido no SDK 52 |
 | Notificações | `expo-notifications` (**notificações locais agendadas**, sem servidor de push) |
-| Persistência | `expo-sqlite` (local-first, com migrações por `PRAGMA user_version`) |
+| Persistência | `expo-sqlite` (local-first, migrações por `PRAGMA user_version`) |
 | Estado | `zustand` |
 | API de produtos | Open Food Facts (primária) + Cosmos Bluesoft (fallback opcional) |
-| UI | Componentes próprios + `@expo/vector-icons` (MaterialCommunityIcons) + `react-native-svg` (logo) + `@expo-google-fonts/inter` |
+| UI | Componentes próprios + `@expo/vector-icons` + `react-native-svg` (logo) + `@expo-google-fonts/inter` |
 
 ## 2. Como rodar
 
 ```bash
 npm install
-npm start          # Expo Dev Server (Expo Go funciona para câmera + notificações locais)
+npm start          # Expo Dev Server (Expo Go cobre câmera + notificações locais)
 npm run android    # ou npm run ios / npm run web
 ```
 
-Validação do projeto:
+### Validar o projeto
 
 ```bash
 npm run typecheck  # tsc --noEmit (strict)
@@ -70,12 +68,11 @@ cai no **cadastro manual** — o fluxo nunca quebra.
 | 11 | Notificações (exemplo + controle) | `NotificationSettingsScreen.tsx` |
 | 12 | Menu lateral | `SideMenuScreen.tsx` |
 
-Extras necessários para o fluxo: `ManualProductScreen` (fallback da seção 4.4),
-`EditProductScreen` (editar validade/frequência), `EditProfileScreen`,
-`SettingsScreen`, `PrivacyScreen` (LGPD), `HelpScreen`.
-
-O formulário de cadastro (`src/components/ProductForm.tsx`) é compartilhado pelas
-telas 4, 6 e pelo cadastro manual, garantindo as mesmas validações nos três caminhos.
+Extras exigidos pelo fluxo: `ManualProductScreen` (fallback da seção 4.4),
+`EditProductScreen`, `EditProfileScreen`, `SettingsScreen`, `PrivacyScreen`
+(LGPD) e `HelpScreen`. O formulário de cadastro (`ProductForm.tsx`) é
+compartilhado pelas telas 4, 6 e pelo cadastro manual, garantindo as mesmas
+validações nos três caminhos.
 
 ## 4. Arquitetura
 
@@ -84,7 +81,7 @@ App.tsx                     # fontes, NavigationContainer, toque em notificaçã
 src/
   components/               # AppText, Button, TextField, DateField, SelectField, ProductForm,
                             # ProductListItem, SegmentedTabs, SideDrawer, LeafDecor, Logo, Banner...
-  constants/                # categorias (ícone+cor), frequências de lembrete
+  constants/                # categorias (ícone + cor) e frequências de lembrete
   db/                       # database.ts (migrações) e productRepository.ts (CRUD + cache + settings)
   navigation/               # RootNavigator, MainTabs, tipos e navigationRef
   screens/                  # 18 telas
@@ -93,10 +90,77 @@ src/
     productLookup.ts        # núcleo puro da cascata (provedores injetáveis)
     productResolver.ts      # fiação com o cache SQLite
     notificationPlanner.ts  # regras puras de agendamento
-    notifications.ts        # expo-notifications (agendar/cancelar/reagendar)
+    notifications.ts        # expo-notifications (agendar / cancelar / reagendar)
   store/                    # useProductStore (produtos + agenda), useSettingsStore (perfil/ajustes)
   theme/                    # cores, tipografia Inter, espaçamentos, sombras
   types/, utils/            # modelos e utilitários puros (barcode, datas, categoria, id)
 tests/                      # 48 testes unitários das regras de negócio
-tools/generate-assets.mjs   # gerador dos PNGs de ícone/splash/notificação
+tools/generate-assets.mjs   # gerador dos PNGs de ícone / splash / notificação
 ```
+
+## 5. Modelo de dados (seção 6 da especificação)
+
+```
+products
+  id TEXT PK                  # prd_<timestamp36><random>
+  barcode TEXT                # normalizado (só dígitos)
+  name / image_url / category / quantity / unit
+  source                      # openfoodfacts | cosmos | manual
+  expiration_date TEXT        # yyyy-mm-dd (comparável como texto)
+  reminder_frequency          # daily | every_3_days | weekly | 1_day_before | custom
+  custom_interval_days INTEGER?
+  status                      # active | consumed | discarded | expired
+  notification_ids TEXT       # JSON com os ids das notificações pendentes
+  created_at / consumed_at / discarded_at
+
+product_cache                  # cache da resolução de GTIN (seção 3.3)
+settings                       # perfil local e preferências (JSON por chave)
+```
+
+Desvio consciente do modelo da especificação: `status` também tem `discarded`,
+exigido pelas abas "Descartados" das telas 8 e 9 do design. `expired` significa
+"passou da validade e ainda está em estoque".
+
+## 6. Notificações: regras implementadas
+
+- **Ancoragem retroativa na validade** (seção 4.2): as ocorrências são
+  `validade − k × intervalo`, não "a partir de hoje".
+- **Nada depois da validade**, exceto um aviso final de "produto vencido"
+  (validade + 1 dia, configurável).
+- **Horário configurável** (padrão 09:00); horários já passados são descartados.
+- **Cancelamento** (seção 5.4): consumir, descartar ou excluir cancela 100% dos
+  ids pendentes; editar validade/frequência cancela e reagendar do zero.
+- **Persistência pelo SO**: triggers `DATE` do `expo-notifications` (sobrevivem
+  ao fechamento do app); ids ficam em `products.notification_ids`.
+- **Orçamento do sistema**: o iOS mantém no máximo 64 notificações locais
+  pendentes. O app usa um orçamento global de 60 e redistribui o excedente
+  priorizando o que vence antes (`rebuildAllSchedules`), reexecutado no boot e
+  no retorno do background.
+
+Desvio consciente da seção 5.2: um trigger `DATE` por ocorrência em vez de
+`DAILY`/`WEEKLY`/`TIME_INTERVAL` repetidos, porque um trigger de repetição não
+pode ser interrompido na data de validade (violaria a regra acima) nem
+cancelado sem que o app rode. A regra de negócio tem prioridade.
+
+## 7. Critérios de aceite (seção 7) → como validar
+
+| Critério | Implementação / validação |
+|---|---|
+| Preencher nome/foto em < 3s no 4G | `productApi` com timeout de 8s + cache local; consulta real validada (`7891000100103` → Leite Condensado Moça 395 g) |
+| API falhou → não trava, cai no manual | `lookupProduct` devolve `offline_error`/`not_found` e o scanner navega para `ManualProduct` (coberto por testes) |
+| Impedir salvar sem validade/frequência | validação em `ProductForm.handleSubmit` (também rejeita validade passada) |
+| Notificações sobrevivem ao app fechado | triggers `DATE` do `expo-notifications` (o SO persiste) |
+| Excluir cancela 100% das pendências | `removeProduct` → `cancelProductNotifications`; confira em Notificações → "Lembretes pendentes no aparelho" |
+| Offline funciona exceto a consulta inicial | toda leitura/escrita é SQLite; apenas `productApi` usa rede |
+
+Status da validação neste repositório: `npm run typecheck` ✅,
+`npm test` (48 testes) ✅ e `npx expo export --platform android` ✅.
+
+## 8. Roadmap pós-v1 (seção 8)
+
+- OCR da validade impressa (ML Kit Text Recognition).
+- Histórico de desperdício como insight/gamificação (a base já está no histórico).
+- Backend leve (Supabase) para sincronizar dispositivos — o login social
+  (Google/Apple) depende disso e está desabilitado com aviso honesto na v1.
+- Sugestões de receitas para produtos perto do vencimento.
+
