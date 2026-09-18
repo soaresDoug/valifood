@@ -10,8 +10,10 @@ import { ScreenHeader } from '../components/ScreenHeader';
 import type { RootStackParamList } from '../navigation/types';
 import {
   GLOBAL_NOTIFICATION_BUDGET,
+  areNotificationsAvailable,
   buildNotificationPreview,
   countScheduledNotifications,
+  getNotificationsUnavailableReason,
   isNotificationPermissionGranted,
 } from '../services/notifications';
 import { useProductStore } from '../store/useProductStore';
@@ -64,6 +66,14 @@ export function NotificationSettingsScreen({ navigation }: Props) {
         onBack={() => navigation.goBack()}
       />
 
+      {!areNotificationsAvailable() ? (
+        <Banner
+          icon="alert-circle-outline"
+          tone="warning"
+          title="Notificações indisponíveis neste ambiente"
+          description={getNotificationsUnavailableReason() ?? undefined}
+        />
+      ) : (
       <Banner
         icon={notificationsGranted ? 'bell-ring-outline' : 'bell-off-outline'}
         tone={notificationsGranted ? 'success' : 'warning'}
@@ -78,6 +88,7 @@ export function NotificationSettingsScreen({ navigation }: Props) {
         actionLabel={notificationsGranted ? undefined : 'Permitir notificações'}
         onAction={notificationsGranted ? undefined : () => void askNotificationPermission()}
       />
+      )}
 
       <AppText variant="subtitle" style={styles.sectionTitle}>
         Exemplo de lembrete
