@@ -20,7 +20,7 @@ type Tabs = BottomTabNavigationProp<MainTabParamList>;
 
 /**
  * Tela 3 do design: "Olá, {nome}!" + o que consumir primeiro (ordenado pela
- * validade mais próxima) + botão de adicionar alimento.
+ * validade mais próxima) + botão único de adicionar produto.
  */
 export function HomeScreen() {
   const navigation = useNavigation<Nav>();
@@ -98,9 +98,7 @@ export function HomeScreen() {
         <EmptyState
           icon="cart-outline"
           title="Sua despensa está vazia"
-          description="Escaneie o código de barras do produto e informe a validade para receber lembretes."
-          actionLabel="Adicionar alimento"
-          onAction={() => navigation.navigate('AddProduct')}
+          description="Adicione seu primeiro produto para começar a receber os alertas de vencimento."
         />
       ) : (
         urgent.map((product) => (
@@ -126,11 +124,14 @@ export function HomeScreen() {
       ) : null}
 
       <Button
-        label="Adicionar alimento"
+        label="Adicionar produto"
         icon="plus"
         onPress={() => navigation.navigate('AddProduct')}
         style={styles.cta}
       />
+      <AppText variant="caption" color={colors.textSecondary} center style={styles.ctaHint}>
+        Escaneie o código de barras para adicionar produtos e receber alertas de vencimento.
+      </AppText>
     </ScreenContainer>
   );
 }
@@ -160,4 +161,5 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   cta: { marginTop: spacing.lg },
+  ctaHint: { marginTop: spacing.sm },
 });
