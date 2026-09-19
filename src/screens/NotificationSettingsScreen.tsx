@@ -15,7 +15,8 @@ import {
   countScheduledNotifications,
   getNotificationsUnavailableReason,
   isNotificationPermissionGranted,
-  scheduleTestNotification,
+  scheduleTestNotificationVerbose,
+  type TestNotificationResult,
 } from '../services/notifications';
 import { useProductStore } from '../store/useProductStore';
 import { useSettingsStore } from '../store/useSettingsStore';
@@ -38,6 +39,8 @@ export function NotificationSettingsScreen({ navigation }: Props) {
   const [pending, setPending] = useState<number | null>(null);
   const [rescheduling, setRescheduling] = useState(false);
   const [testScheduledAt, setTestScheduledAt] = useState<Date | null>(null);
+  const [testRunning, setTestRunning] = useState(false);
+  const [testResult, setTestResult] = useState<TestNotificationResult | null>(null);
   const preview = buildNotificationPreview();
 
   const loadPending = useCallback(async () => {
@@ -152,11 +155,36 @@ export function NotificationSettingsScreen({ navigation }: Props) {
       <Button
         label="Disparar lembrete de teste (1 min)"
         icon="bell-ring-outline"
+        loading={testRunning}
         onPress={async () => {
-          const when = await scheduleTestNotification(1);
-          setTestScheduledAt(when);
+          setTestRunning(true);
+          setTestResult(null);
+          try {
+            const result = await scheduleTestNotificationVerbose(1);
+            setTestResult(result);
+            setTestScheduledAt(result.scheduledAt);
+            await loadPending();
+          } finally {
+            setTestRunning(false);
+          }
         }}
       />
+      {testResult ? (
+        <Banner
+          icon={testResult.ok ? 'check-circle-outline' : 'alert-circle-outline'}
+          tone={testResult.ok ? 'success' : 'warning'}
+          title={testResult.ok ? 'Teste agendado no SO' : 'Teste nao entrou na fila'}
+          description={
+            testResult.ok
+              ? `Permissao: sim • fila do SO agora: ${testResult.pendingCount}`
+              : `Permissao: ${
+                  testResult.permissionGranted ? 'sim' : 'nao'
+                } • fila do SO: ${testResult.pendingCount} • motivo: ${
+                  testResult.error ?? 'desconhecido'
+                }`
+          }
+        />
+      ) : null}
       {testScheduledAt ? (
         <AppText variant="caption" color={colors.textSecondary} center style={styles.note}>
           Teste agendado para {testScheduledAt.getHours()}:

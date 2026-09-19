@@ -317,8 +317,57 @@ export async function rebuildAllSchedules(
 export async function scheduleTestNotification(
   delayMinutes = 1
 ): Promise<Date | null> {
+  const result = await scheduleTestNotificationVerbose(delayMinutes);
+  return result.scheduledAt;
+}
+
+export interface TestNotificationResult {
+  /** true somente se a fila do SO confirmou o agendamento apos a chamada. */
+  ok: boolean;
+  /** Data alvo do lembrete (apenas quando ok). */
+  scheduledAt: Date | null;
+  /** Permissao do SO no momento da tentativa. */
+  permissionGranted: boolean;
+  /** Quantidade de ValiFood na fila do SO apos a tentativa. */
+  pendingCount: number;
+  /** Motivo tecnico quando ok === false. */
+  error: string | null;
+}
+
+function errorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error);
+}
+
+/**
+ * Variante diagnostica do teste: pede permissao, executa o canal, agenda e
+ * depois le a fila real do SO para confirmar se o item entrou na agenda.
+ */
+export async function scheduleTestNotificationVerbose(
+  delayMinutes = 1
+): Promise<TestNotificationResult> {
+  const base: TestNotificationResult = {
+    ok: false,
+    scheduledAt: null,
+    permissionGranted: false,
+    pendingCount: await countScheduledNotifications(),
+    error: null,
+  };
   const module = notifications();
-  if (!module) return null;
+  if (!module) {
+    return { ...base, error: 'expo-notifications indisponivel neste aparelho/build' };
+  }
+
+  const granted = await requestNotificationPermissions();
+  const afterPermission: TestNotificationResult = {
+    ...base,
+    permissionGranted: granted,
+    pendingCount: await countScheduledNotifications(),
+  };
+  if (!granted) {
+    return { ...afterPermission, error: 'permissao do SO negada ou nao pedivel' };
+  }
+
   const when = new Date(Date.now() + delayMinutes * 60_000);
   try {
     await module.scheduleNotificationAsync({
@@ -333,11 +382,24 @@ export async function scheduleTestNotification(
         channelId: NOTIFICATION_CHANNEL_ID,
       },
     });
-    return when;
   } catch (error) {
-    console.warn('[notifications] falha ao agendar lembrete de teste', error);
-    return null;
+    return {
+      ...afterPermission,
+      pendingCount: await countScheduledNotifications(),
+      error: `scheduleNotificationAsync falhou: ${errorMessage(error)}`,
+    };
   }
+
+  const pendingCount = await countScheduledNotifications();
+  if (pendingCount <= afterPermission.pendingCount) {
+    return {
+      ...afterPermission,
+      pendingCount,
+      error: `agendamento aceito, mas a fila do SO nao mudou (${afterPermission.pendingCount} -> ${pendingCount})`,
+    };
+  }
+
+  return { ...afterPermission, ok: true, scheduledAt: when, pendingCount };
 }
 
 /** Exemplos usados na tela de notificacoes (preview do design). */
