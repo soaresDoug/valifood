@@ -86,13 +86,19 @@ export async function setupAndroidChannel(): Promise<void> {
   const module = notifications();
   if (Platform.OS !== 'android' || !module) return;
   try {
+    // O canal persiste no Android: recriamos para aplicar mudancas de som etc.
+    // (sem o campo `sound`, o Android usa o som de notificacao padrao).
+    await module.deleteNotificationChannelAsync(NOTIFICATION_CHANNEL_ID);
+  } catch {
+    // Primeira execucao: o canal ainda nao existe.
+  }
+  try {
     await module.setNotificationChannelAsync(NOTIFICATION_CHANNEL_ID, {
       name: NOTIFICATION_CHANNEL_NAME,
       importance: module.AndroidImportance.HIGH,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#4CAF50',
       lockscreenVisibility: module.AndroidNotificationVisibility.PUBLIC,
-      sound: 'default',
     });
   } catch (error) {
     console.warn('[notifications] falha ao criar canal Android', error);
@@ -182,7 +188,8 @@ function toContent(
   return {
     title: planned.title,
     body: planned.body,
-    sound: 'default' as const,
+    // Sem o campo `sound`: assim o Android/iOS usam o som padrao do sistema.
+    // Passar 'default' faz o modulo procurar um arquivo de audio inexistente.
     data: {
       [NOTIFICATION_DATA_KEY]: true,
       productId: product.id,
@@ -318,7 +325,6 @@ export async function scheduleTestNotification(
       content: {
         title: 'ValiFood — teste de notificacao',
         body: 'Se voce esta vendo isso, os lembretes locais estao funcionando!',
-        sound: 'default',
         data: { [NOTIFICATION_DATA_KEY]: true, kind: 'test' },
       },
       trigger: {
