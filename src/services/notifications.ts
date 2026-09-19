@@ -311,6 +311,82 @@ export async function rebuildAllSchedules(
 }
 
 /**
+ * Dispara uma notificacao agora mesmo (trigger null = entrega imediata).
+ * Nao usa alarme: se essa chegar e a agenda de 1 min nao, o culpado e o
+ * agendamento/alarmes exatos do aparelho — nao o canal nem o handler.
+ */
+export async function scheduleImmediateTestNotification(): Promise<{
+  ok: boolean;
+  error: string | null;
+}> {
+  const module = notifications();
+  if (!module) return { ok: false, error: 'expo-notifications indisponivel neste aparelho/build' };
+  const granted = await requestNotificationPermissions();
+  if (!granted) return { ok: false, error: 'permissao do SO negada ou nao pedivel' };
+  try {
+    await module.scheduleNotificationAsync({
+      content: {
+        title: 'ValiFood — teste imediato',
+        body: 'Notificacao imediata: canal e handler estao OK.',
+        data: { [NOTIFICATION_DATA_KEY]: true, kind: 'test-immediate' },
+      },
+      trigger: null,
+    });
+    return { ok: true, error: null };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+export interface NotificationsDiagnostics {
+  moduleLoaded: boolean;
+  permissionGranted: boolean;
+  channel: unknown;
+  scheduledCount: number;
+  scheduled: Array<{ id: string; title: string; channelId?: string; trigger?: unknown }>;
+  error: string | null;
+}
+
+/** Leitura crua do canal + fila do SO para diagnosticar agendamento vs entrega. */
+export async function getNotificationsDiagnostics(): Promise<NotificationsDiagnostics> {
+  const module = notifications();
+  const result: NotificationsDiagnostics = {
+    moduleLoaded: module !== null,
+    permissionGranted: false,
+    channel: null,
+    scheduledCount: 0,
+    scheduled: [],
+    error: null,
+  };
+  if (!module) {
+    return { ...result, error: 'modulo expo-notifications nao carregou' };
+  }
+  try {
+    result.permissionGranted = await isNotificationPermissionGranted();
+    if (Platform.OS === 'android') {
+      result.channel = await module.getNotificationChannelAsync(NOTIFICATION_CHANNEL_ID);
+    }
+    const scheduled = await module.getAllScheduledNotificationsAsync();
+    result.scheduledCount = scheduled.length;
+    result.scheduled = scheduled.map((item) => ({
+      id: item.identifier,
+      title: String(item.content.title ?? ''),
+      channelId:
+        typeof item.trigger === 'object' && item.trigger !== null
+          ? String((item.trigger as Record<string, unknown>).channelId ?? '')
+          : undefined,
+      trigger: item.trigger,
+    }));
+  } catch (error) {
+    result.error = error instanceof Error ? error.message : String(error);
+  }
+  return result;
+}
+
+/**
  * Agenda uma notificacao de teste ~1 minuto a partir de agora.
  * Usada para validar o pipeline de notificacao sem esperar a agenda real.
  */

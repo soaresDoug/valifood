@@ -13,9 +13,12 @@ import {
   areNotificationsAvailable,
   buildNotificationPreview,
   countScheduledNotifications,
+  getNotificationsDiagnostics,
   getNotificationsUnavailableReason,
   isNotificationPermissionGranted,
+  scheduleImmediateTestNotification,
   scheduleTestNotificationVerbose,
+  type NotificationsDiagnostics,
   type TestNotificationResult,
 } from '../services/notifications';
 import { useProductStore } from '../store/useProductStore';
@@ -41,6 +44,13 @@ export function NotificationSettingsScreen({ navigation }: Props) {
   const [testScheduledAt, setTestScheduledAt] = useState<Date | null>(null);
   const [testRunning, setTestRunning] = useState(false);
   const [testResult, setTestResult] = useState<TestNotificationResult | null>(null);
+  const [immediateResult, setImmediateResult] = useState<{
+    ok: boolean;
+    error: string | null;
+  } | null>(null);
+  const [diagnostics, setDiagnostics] = useState<NotificationsDiagnostics | null>(null);
+  const [immediateLoading, setImmediateLoading] = useState(false);
+  const [diagnosticsLoading, setDiagnosticsLoading] = useState(false);
   const preview = buildNotificationPreview();
 
   const loadPending = useCallback(async () => {
@@ -192,6 +202,74 @@ export function NotificationSettingsScreen({ navigation }: Props) {
           notificação chega mesmo assim.
         </AppText>
       ) : null}
+      <View style={styles.spacer} />
+      <AppText variant="subtitle" style={styles.sectionTitle}>
+        Diagnostico: entrega vs. agendamento
+      </AppText>
+      <Button
+        label="1) Enviar notificacao imediata"
+        icon="bell-outline"
+        variant="outline"
+        loading={immediateLoading}
+        onPress={async () => {
+          setImmediateLoading(true);
+          setImmediateResult(null);
+          try {
+            setImmediateResult(await scheduleImmediateTestNotification());
+          } finally {
+            setImmediateLoading(false);
+          }
+        }}
+      />
+      {immediateResult ? (
+        <Banner
+          icon={immediateResult.ok ? 'check-circle-outline' : 'alert-circle-outline'}
+          tone={immediateResult.ok ? 'success' : 'warning'}
+          title={immediateResult.ok ? 'Imediata enviada' : 'Imediata falhou'}
+          description={
+            immediateResult.ok
+              ? 'Se ela apareceu na bandeja, canal + handler + permissao estao OK.'
+              : immediateResult.error ?? 'Erro desconhecido'
+          }
+        />
+      ) : null}
+      <View style={styles.spacer} />
+      <Button
+        label="2) Ler canal e fila do SO"
+        icon="magnify"
+        variant="outline"
+        loading={diagnosticsLoading}
+        onPress={async () => {
+          setDiagnosticsLoading(true);
+          try {
+            setDiagnostics(await getNotificationsDiagnostics());
+          } finally {
+            setDiagnosticsLoading(false);
+          }
+        }}
+      />
+      {diagnostics ? (
+        <View style={styles.diagnosticsCard}>
+          <AppText variant="label">Modulo: {diagnostics.moduleLoaded ? 'carregado' : 'AUSENTE'}</AppText>
+          <AppText variant="label">
+            Permissao: {diagnostics.permissionGranted ? 'sim' : 'NAO'}
+          </AppText>
+          <AppText variant="label">Na fila do SO: {diagnostics.scheduledCount}</AppText>
+          <AppText variant="caption" color={colors.textSecondary}>
+            Canal: {formatDiagnosticsValue(diagnostics.channel)}
+          </AppText>
+          {diagnostics.scheduled.slice(0, 3).map((item) => (
+            <AppText key={item.id} variant="caption" color={colors.textSecondary}>
+              • {item.title} (canal: {item.channelId || '—'})
+            </AppText>
+          ))}
+          {diagnostics.error ? (
+            <AppText variant="caption" color={colors.danger}>
+              Erro: {diagnostics.error}
+            </AppText>
+          ) : null}
+        </View>
+      ) : null}
       <AppText variant="caption" color={colors.textSecondary} center style={styles.note}>
         Ao tocar em um lembrete o ValiFood abre direto nos detalhes do produto. Lembretes de
         itens consumidos, descartados ou excluídos são cancelados automaticamente.
@@ -200,8 +278,27 @@ export function NotificationSettingsScreen({ navigation }: Props) {
   );
 }
 
+function formatDiagnosticsValue(value: unknown): string {
+  if (value === null || value === undefined) return 'nao encontrado';
+  try {
+    const text = JSON.stringify(value);
+    return text.length > 220 ? `${text.slice(0, 220)}…` : text;
+  } catch {
+    return String(value);
+  }
+}
+
 const styles = StyleSheet.create({
   sectionTitle: { marginBottom: spacing.md },
+  diagnosticsCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    marginTop: spacing.sm,
+    gap: spacing.xs,
+  },
   previewCard: {
     backgroundColor: colors.primary,
     borderRadius: radii.lg,
