@@ -6,8 +6,9 @@ import {
   useFonts,
 } from '@expo-google-fonts/inter';
 import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { navigationRef, openProductFromNotification } from './src/navigation/navigationRef';
@@ -33,6 +34,14 @@ const navigationTheme = {
   },
 };
 
+/**
+ * Splash nativo: mantido visivel ate a fonte Inter e a primeira tela do app
+ * estarem prontas. Assim a troca para a splash do app e imperceptivel
+ * (sem "flash" de tela branca) — tarefa 2 da especificacao.
+ */
+void SplashScreen.preventAutoHideAsync();
+SplashScreen.setOptions({ duration: 300, fade: true });
+
 export default function App() {
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -41,6 +50,17 @@ export default function App() {
     Inter_700Bold,
   });
   const appState = useRef(AppState.currentState);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    if (fontsLoaded) setReady(true);
+  }, [fontsLoaded]);
+
+  const handleRootLayout = useCallback(() => {
+    if (ready) {
+      void SplashScreen.hideAsync();
+    }
+  }, [ready]);
 
   // Handler de notificação + canal Android (seção 5.2).
   useEffect(() => {
@@ -79,21 +99,23 @@ export default function App() {
     return () => subscription.remove();
   }, []);
 
-  if (!fontsLoaded) {
-    // Enquanto a fonte Inter carrega, mantém o fundo da marca (sem "flash").
-    return <View style={styles.loading} />;
+  if (!ready) {
+    // Splash nativo ainda visivel: nao renderizamos nada para nao piscar branco.
+    return null;
   }
 
   return (
     <SafeAreaProvider>
-      <NavigationContainer ref={navigationRef} theme={navigationTheme}>
-        <StatusBar style="dark" />
-        <RootNavigator />
-      </NavigationContainer>
+      <View style={styles.root} onLayout={handleRootLayout}>
+        <NavigationContainer ref={navigationRef} theme={navigationTheme}>
+          <StatusBar style="dark" />
+          <RootNavigator />
+        </NavigationContainer>
+      </View>
     </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  loading: { flex: 1, backgroundColor: colors.surface },
+  root: { flex: 1, backgroundColor: colors.background },
 });

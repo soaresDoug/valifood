@@ -61,9 +61,11 @@ export function ProfileScreen({ navigation }: Props) {
         </View>
         <View style={styles.identityText}>
           <AppText variant="subtitle">{profile.name}</AppText>
-          <AppText variant="caption" color={colors.textSecondary}>
-            {profile.email}
-          </AppText>
+          {profile.email ? (
+            <AppText variant="caption" color={colors.textSecondary}>
+              {profile.email}
+            </AppText>
+          ) : null}
         </View>
       </View>
 

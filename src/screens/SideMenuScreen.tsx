@@ -90,7 +90,7 @@ export function SideMenuScreen({ navigation }: Props) {
       items={items}
       onClose={() => navigation.goBack()}
       userName={profile?.name}
-      userEmail={profile?.email}
+      userEmail={profile?.email ? profile.email : undefined}
     />
   );
 }

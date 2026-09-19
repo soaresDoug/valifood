@@ -4,7 +4,8 @@ import type { ResolvedProduct } from '../types';
 export type RootStackParamList = {
   Splash: undefined;
   Login: undefined;
-  SignUp: undefined;
+  /** Onboarding curto exibido apenas na primeira vez (tarefa 3). */
+  Onboarding: undefined;
   Main: NavigatorScreenParams<MainTabParamList> | undefined;
   Scanner: undefined;
   /** Tela 5 → 6: produto identificado na API, faltando validade/frequência. */

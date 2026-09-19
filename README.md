@@ -51,12 +51,32 @@ cp .env.example .env
 Sem o token o provedor Cosmos é simplesmente ignorado (`outcome: skipped`) e o app
 cai no **cadastro manual** — o fluxo nunca quebra.
 
-## 3. Telas implementadas (design de referência)
+## 3. Fluxo de entrada
+
+```
+Splash (~2s, logo animada) → Login (apenas o nome) → Onboarding (só na 1ª vez) → Tela principal
+```
+
+- **Splash** (`SplashScreen.tsx`): logo com fade-in, mínimo de 2s, bootstrap do app em
+  paralelo (banco, ajustes, canal de notificação) e fade-out de 350ms antes de trocar
+  de tela. O splash nativo (`expo-splash-screen`) fica visível até a fonte Inter e a
+  primeira tela estarem prontas, evitando qualquer "flash" em branco.
+- **Login** (`LoginScreen.tsx`): só o campo de nome + botão "Continuar" (desabilitado
+  com campo vazio, erro visível para espaços em branco). O nome é salvo no SQLite local
+  (`settings.user_profile`) e reconhecido nas próximas sessões.
+- **Onboarding** (`OnboardingScreen.tsx`): 4 slides curtos com swipe ou "Próximo",
+  indicador de bolinhas e "Pular" sempre visível; grava a flag
+  `settings.app_settings.onboardingDone = true` ao concluir ou pular.
+
+Regras de roteamento ficam em `src/utils/appFlow.ts` (módulo puro, coberto por testes).
+
+## 4. Telas implementadas (design de referência)
 
 | # | Tela do design | Arquivo |
 |---|---|---|
 | 1 | Tela de abertura | `src/screens/SplashScreen.tsx` |
-| 2 | Login / cadastro | `LoginScreen.tsx`, `SignUpScreen.tsx` |
+| 2 | Login (simplificado: só nome) | `LoginScreen.tsx` |
+| — | Onboarding (novo, 4 slides) | `OnboardingScreen.tsx` |
 | 3 | Home "O que consumir primeiro?" | `HomeScreen.tsx` |
 | 4 | Adicionar alimento | `AddProductScreen.tsx` |
 | 5 | Scanner de código de barras | `ScannerScreen.tsx` |
@@ -74,7 +94,7 @@ Extras exigidos pelo fluxo: `ManualProductScreen` (fallback da seção 4.4),
 compartilhado pelas telas 4, 6 e pelo cadastro manual, garantindo as mesmas
 validações nos três caminhos.
 
-## 4. Arquitetura
+## 5. Arquitetura
 
 ```
 App.tsx                     # fontes, NavigationContainer, toque em notificação, refresh no foreground
@@ -98,7 +118,7 @@ tests/                      # 48 testes unitários das regras de negócio
 tools/generate-assets.mjs   # gerador dos PNGs de ícone / splash / notificação
 ```
 
-## 5. Modelo de dados (seção 6 da especificação)
+## 6. Modelo de dados (seção 6 da especificação)
 
 ```
 products
@@ -121,7 +141,7 @@ Desvio consciente do modelo da especificação: `status` também tem `discarded`
 exigido pelas abas "Descartados" das telas 8 e 9 do design. `expired` significa
 "passou da validade e ainda está em estoque".
 
-## 6. Notificações: regras implementadas
+## 7. Notificações: regras implementadas
 
 - **Ancoragem retroativa na validade** (seção 4.2): as ocorrências são
   `validade − k × intervalo`, não "a partir de hoje".
@@ -142,7 +162,7 @@ Desvio consciente da seção 5.2: um trigger `DATE` por ocorrência em vez de
 pode ser interrompido na data de validade (violaria a regra acima) nem
 cancelado sem que o app rode. A regra de negócio tem prioridade.
 
-## 7. Critérios de aceite (seção 7) → como validar
+## 8. Critérios de aceite (seção 7) → como validar
 
 | Critério | Implementação / validação |
 |---|---|
@@ -156,7 +176,7 @@ cancelado sem que o app rode. A regra de negócio tem prioridade.
 Status da validação neste repositório: `npm run typecheck` ✅,
 `npm test` (48 testes) ✅ e `npx expo export --platform android` ✅.
 
-## 8. Roadmap pós-v1 (seção 8)
+## 9. Roadmap pós-v1 (seção 8)
 
 - OCR da validade impressa (ML Kit Text Recognition).
 - Histórico de desperdício como insight/gamificação (a base já está no histórico).

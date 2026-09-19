@@ -21,11 +21,16 @@ export interface SettingsState {
   notificationsGranted: boolean;
   hydrated: boolean;
   hydrate: () => void;
-  /** v1 é local-first: "conta" é um perfil salvo no dispositivo (seção 1.3). */
-  signIn: (name: string, email: string) => Promise<UserProfile>;
+  /**
+   * v1 e local-first: o "usuario" e apenas o nome salvo no dispositivo
+   * (secao 1.3). O e-mail e opcional e pode ser preenchido depois no perfil.
+   */
+  signIn: (name: string, email?: string) => Promise<UserProfile>;
   updateProfile: (patch: Partial<Pick<UserProfile, 'name' | 'email'>>) => void;
   signOut: () => void;
   updateSettings: (patch: Partial<AppSettings>) => void;
+  /** Marca o onboarding como visto (concluido ou pulado). */
+  completeOnboarding: () => void;
   /** Pede a permissão de notificações e guarda o resultado (seção 5.2). */
   askNotificationPermission: () => Promise<boolean>;
   setNotificationsGranted: (granted: boolean) => void;
@@ -46,13 +51,13 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   signIn: async (name, email) => {
     const profile: UserProfile = {
       name: name.trim(),
-      email: email.trim().toLowerCase(),
+      email: (email ?? get().profile?.email ?? '').trim().toLowerCase(),
       createdAt: get().profile?.createdAt ?? new Date().toISOString(),
       notificationsEnabled: get().notificationsGranted,
     };
     setSetting(PROFILE_KEY, profile);
-    setSetting(SETTINGS_KEY, { ...get().settings, onboardingDone: true });
-    set({ profile, settings: { ...get().settings, onboardingDone: true } });
+    set({ profile });
+    // O onboarding só é marcado como visto ao finalizar/pular (tarefa 3).
     const granted = await get().askNotificationPermission();
     const updated = { ...profile, notificationsEnabled: granted };
     setSetting(PROFILE_KEY, updated);
@@ -77,6 +82,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     const updated = { ...get().settings, ...patch };
     setSetting(SETTINGS_KEY, updated);
     set({ settings: updated });
+  },
+
+  completeOnboarding: () => {
+    get().updateSettings({ onboardingDone: true });
   },
 
   askNotificationPermission: async () => {

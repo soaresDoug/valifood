@@ -10,7 +10,10 @@ import { useSettingsStore } from '../store/useSettingsStore';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EditProfile'>;
 
-/** Edição do perfil local (nome e e-mail). */
+/**
+ * Edição do perfil local: nome obrigatório, e-mail opcional
+ * (o login atual pede apenas o nome).
+ */
 export function EditProfileScreen({ navigation }: Props) {
   const profile = useSettingsStore((state) => state.profile);
   const updateProfile = useSettingsStore((state) => state.updateProfile);
@@ -21,8 +24,8 @@ export function EditProfileScreen({ navigation }: Props) {
   const handleSave = () => {
     const nextErrors: { name?: string; email?: string } = {};
     if (name.trim().length < 2) nextErrors.name = 'Informe seu nome';
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      nextErrors.email = 'Informe um e-mail válido';
+    if (email.trim().length > 0 && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      nextErrors.email = 'Informe um e-mail válido ou deixe em branco';
     }
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
@@ -44,10 +47,11 @@ export function EditProfileScreen({ navigation }: Props) {
         error={errors.name}
       />
       <TextField
-        label="E-mail"
+        label="E-mail (opcional)"
         icon="email-outline"
         autoCapitalize="none"
         keyboardType="email-address"
+        placeholder="voce@email.com"
         value={email}
         onChangeText={setEmail}
         error={errors.email}

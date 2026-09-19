@@ -10,6 +10,7 @@ import { HomeScreen } from '../screens/HomeScreen';
 import { LoginScreen } from '../screens/LoginScreen';
 import { ManualProductScreen } from '../screens/ManualProductScreen';
 import { NotificationSettingsScreen } from '../screens/NotificationSettingsScreen';
+import { OnboardingScreen } from '../screens/OnboardingScreen';
 import { PrivacyScreen } from '../screens/PrivacyScreen';
 import { ProductDetailsScreen } from '../screens/ProductDetailsScreen';
 import { ProductFoundScreen } from '../screens/ProductFoundScreen';
@@ -17,8 +18,8 @@ import { ProfileScreen } from '../screens/ProfileScreen';
 import { ScannerScreen } from '../screens/ScannerScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { SideMenuScreen } from '../screens/SideMenuScreen';
-import { SignUpScreen } from '../screens/SignUpScreen';
 import { SplashScreen } from '../screens/SplashScreen';
+import { colors } from '../theme';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -32,13 +33,27 @@ export function RootNavigator() {
       initialRouteName="Splash"
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: 'transparent' },
+        // Fundo da marca em todas as telas: evita qualquer "flash" claro/escuro
+        // durante as transições (fade da splash -> login -> onboarding).
+        contentStyle: { backgroundColor: colors.background },
         animation: 'slide_from_right',
       }}
     >
-      <Stack.Screen name="Splash" component={SplashScreen} options={{ animation: 'fade' }} />
-      <Stack.Screen name="Login" component={LoginScreen} options={{ animation: 'fade' }} />
-      <Stack.Screen name="SignUp" component={SignUpScreen} />
+      <Stack.Screen
+        name="Splash"
+        component={SplashScreen}
+        options={{ animation: 'fade', contentStyle: { backgroundColor: colors.background } }}
+      />
+      <Stack.Screen
+        name="Login"
+        component={LoginScreen}
+        options={{ animation: 'fade', contentStyle: { backgroundColor: colors.surface } }}
+      />
+      <Stack.Screen
+        name="Onboarding"
+        component={OnboardingScreen}
+        options={{ animation: 'fade' }}
+      />
       <Stack.Screen name="Main" component={MainTabs} options={{ animation: 'fade' }} />
       <Stack.Screen
         name="Scanner"
