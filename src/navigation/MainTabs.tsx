@@ -1,7 +1,14 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Platform, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { MainTabParamList } from './types';
+import {
+  TAB_BAR_ICON_SIZE,
+  TAB_BAR_ICON_SIZE_INACTIVE,
+  TAB_BAR_LABEL_MARGIN_TOP,
+  getTabBarLayout,
+} from './tabBarMetrics';
 import { HistoryScreen } from '../screens/HistoryScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { StockScreen } from '../screens/StockScreen';
@@ -21,8 +28,20 @@ const LABELS: Record<keyof MainTabParamList, string> = {
   History: 'Histórico',
 };
 
-/** Barra inferior do design (telas 3, 8 e 9): Início, Estoque e Histórico. */
+/**
+ * Barra inferior do design (telas 3, 8 e 9): Início, Estoque e Histórico.
+ *
+ * A altura NÃO é fixa: o `height` do `tabBarStyle` é a altura final da barra e o
+ * sistema ainda injeta o inset inferior como `paddingBottom`. Ver
+ * `./tabBarMetrics` — era exatamente esse detalhe que cortava os rótulos no iOS.
+ */
 export function MainTabs() {
+  const insets = useSafeAreaInsets();
+  const tabBar = getTabBarLayout({
+    platform: Platform.OS === 'ios' ? 'ios' : 'android',
+    bottomInset: insets.bottom,
+  });
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -30,17 +49,13 @@ export function MainTabs() {
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
         tabBarLabel: LABELS[route.name],
-        tabBarLabelStyle: {
-          ...textVariants.caption,
-          fontSize: 11,
-          marginTop: 2,
-        },
-        tabBarStyle: styles.tabBar,
-        tabBarItemStyle: styles.tabItem,
+        tabBarLabelStyle: styles.tabLabel,
+        tabBarStyle: [styles.tabBar, { height: tabBar.height, paddingBottom: insets.bottom }],
+        tabBarItemStyle: { paddingTop: tabBar.itemPaddingTop },
         tabBarIcon: ({ color, focused }) => (
           <MaterialCommunityIcons
             name={ICONS[route.name]}
-            size={focused ? 25 : 23}
+            size={focused ? TAB_BAR_ICON_SIZE : TAB_BAR_ICON_SIZE_INACTIVE}
             color={color}
           />
         ),
@@ -55,10 +70,11 @@ export function MainTabs() {
 
 const styles = StyleSheet.create({
   tabBar: {
-    height: Platform.OS === 'ios' ? 84 : 64,
-    paddingTop: 6,
     backgroundColor: colors.surface,
     borderTopColor: colors.border,
   },
-  tabItem: { paddingBottom: Platform.OS === 'ios' ? 24 : 8 },
+  tabLabel: {
+    ...textVariants.tiny,
+    marginTop: TAB_BAR_LABEL_MARGIN_TOP,
+  },
 });
