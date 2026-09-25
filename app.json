@@ -30,8 +30,7 @@
         "android.permission.VIBRATE",
         "android.permission.CAMERA"
       ],
-      "predictiveBackGestureEnabled": false,
-      "edgeToEdgeEnabled": true
+      "predictiveBackGestureEnabled": false
     },
     "web": {
       "favicon": "./assets/favicon.png"
