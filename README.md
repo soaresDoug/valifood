@@ -238,10 +238,11 @@ npm run verify            # tsc --noEmit + testes unitários
 
 - **Branches:** trabalhe em branches a partir da `main`:
   `feat/nome-da-funcionalidade`, `fix/descricao-do-bug`, `docs/tema`.
-- **Commits:** [Conventional Commits](https://www.conventionalcommits.org/pt-br/),
-  no formato `tipo: descrição curta` — ex.:
-  `feat: adiciona filtro por categoria no estoque`, `fix: corrige validade passada no formulário`,
-  `docs: atualiza guia de build`. Tipos usados: `feat`, `fix`, `docs`, `refactor`,
+- **Commits:** [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/),
+  com a mensagem sempre **em inglês** (padrão do projeto), no formato
+  `tipo(escopo): descrição curta` — ex.:
+  `feat(stock): add category filter`, `fix(product-form): reject past expiration date`,
+  `docs: update the build guide`. Tipos usados: `feat`, `fix`, `docs`, `refactor`,
   `test`, `chore`.
 - **Pull Requests:** descreva o **o quê** e o **por quê**; referencie issues
   (`Closes #12`); garanta que `npm run verify` passa e descreva como testar.
