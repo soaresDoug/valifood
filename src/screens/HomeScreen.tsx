@@ -48,8 +48,24 @@ export function HomeScreen() {
   const stats = useMemo(() => computeStats(products), [products]);
   const urgent = inStock.slice(0, 5);
 
+  // CTA única de "Adicionar produto" (com a dica logo abaixo): fica dentro do bloco
+  // centralizado quando a despensa está vazia e no rodapé da lista quando há itens.
+  const addProductCta = (
+    <>
+      <Button
+        label="Adicionar produto"
+        icon="plus"
+        onPress={() => navigation.navigate('AddProduct')}
+        style={styles.cta}
+      />
+      <AppText variant="caption" color={colors.textSecondary} center style={styles.ctaHint}>
+        Escaneie o código de barras para adicionar produtos e receber alertas de vencimento.
+      </AppText>
+    </>
+  );
+
   return (
-    <ScreenContainer scroll>
+    <ScreenContainer scroll contentStyle={styles.content}>
       <View style={styles.header}>
         <View style={styles.greeting}>
           <AppText variant="title">Olá, {greeting}!</AppText>
@@ -95,48 +111,55 @@ export function HomeScreen() {
       </AppText>
 
       {urgent.length === 0 ? (
-        <EmptyState
-          icon="cart-outline"
-          title="Sua despensa está vazia"
-          description="Adicione seu primeiro produto para começar a receber os alertas de vencimento."
-        />
-      ) : (
-        urgent.map((product) => (
-          <ProductListItem
-            key={product.id}
-            product={product}
-            onPress={() => navigation.navigate('ProductDetails', { productId: product.id })}
+        <View style={styles.emptyWrapper}>
+          <EmptyState
+            icon="cart-outline"
+            title="Sua despensa está vazia"
+            description="Adicione seu primeiro produto para começar a receber os alertas de vencimento."
           />
-        ))
+          {addProductCta}
+        </View>
+      ) : (
+        <>
+          {urgent.map((product) => (
+            <ProductListItem
+              key={product.id}
+              product={product}
+              onPress={() => navigation.navigate('ProductDetails', { productId: product.id })}
+            />
+          ))}
+
+          {inStock.length > urgent.length ? (
+            <Pressable
+              onPress={() => tabs.navigate('Stock')}
+              style={styles.seeAll}
+              accessibilityRole="button"
+            >
+              <AppText variant="label" color={colors.primary}>
+                Ver todos os {inStock.length} itens do estoque
+              </AppText>
+              <MaterialCommunityIcons name="chevron-right" size={20} color={colors.primary} />
+            </Pressable>
+          ) : null}
+
+          {addProductCta}
+        </>
       )}
-
-      {inStock.length > urgent.length ? (
-        <Pressable
-          onPress={() => tabs.navigate('Stock')}
-          style={styles.seeAll}
-          accessibilityRole="button"
-        >
-          <AppText variant="label" color={colors.primary}>
-            Ver todos os {inStock.length} itens do estoque
-          </AppText>
-          <MaterialCommunityIcons name="chevron-right" size={20} color={colors.primary} />
-        </Pressable>
-      ) : null}
-
-      <Button
-        label="Adicionar produto"
-        icon="plus"
-        onPress={() => navigation.navigate('AddProduct')}
-        style={styles.cta}
-      />
-      <AppText variant="caption" color={colors.textSecondary} center style={styles.ctaHint}>
-        Escaneie o código de barras para adicionar produtos e receber alertas de vencimento.
-      </AppText>
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
+  /**
+   * O `ScreenContainer` rola a tela; deixar o conteúdo interno crescer (`flexGrow`)
+   * garante altura definida para o estado vazio centralizar de verdade.
+   */
+  content: { flexGrow: 1 },
+  /**
+   * Estado vazio (sem produtos): o conjunto ícone + texto + CTA fica centralizado
+   * no espaço livre abaixo do título da seção.
+   */
+  emptyWrapper: { flex: 1, justifyContent: 'center' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
