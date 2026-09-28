@@ -113,6 +113,10 @@ export function DateField({
                 minimumDate={min}
                 onChange={handleChange}
                 locale="pt-BR"
+                // A folha usa cores claras fixas; mantenha o UIDatePicker no
+                // mesmo modo para que as cores dinâmicas do iOS não fiquem
+                // claras sobre este fundo quando o sistema estiver em Dark Mode.
+                themeVariant="light"
               />
               <Button
                 label="Confirmar"
