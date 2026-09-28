@@ -7,7 +7,7 @@ validade dos produtos que compra. O fluxo central é simples:
 
 > **escanear → identificar → informar validade → ser lembrado**
 
-## 1. O que é e qual problema resolve
+## O que é e qual problema resolve
 
 Todo mundo já jogou fora leite, iogurte, frango ou remédio que venceu esquecido
 no fundo da geladeira ou da despensa. Segundo estimativas do setor, boa parte do
@@ -27,7 +27,7 @@ Além disso, o app mantém um **estoque** do que você tem em casa (ordenado pel
 que vence primeiro, com cores verde/amarelo/vermelho) e um **histórico** do que
 foi consumido ou descartado — ou seja, quanto desperdício você deixou de gerar.
 
-## 2. Propósito e casos de uso
+## Propósito e casos de uso
 
 **Propósito:** reduzir o desperdício de alimentos e dinheiro, dando a qualquer
 pessoa um controle simples do que vence quando — sem planilhas, sem cadastro em
@@ -52,7 +52,7 @@ Casos de uso concretos:
 Em todos os casos, os dados ficam **no aparelho** (ver [LGPD](#privacidade-e-lgpd)),
 não é preciso criar conta em servidor e o app funciona sem internet.
 
-## 3. Stack
+## Stack
 
 | Camada | Tecnologia |
 |---|---|
@@ -66,117 +66,10 @@ não é preciso criar conta em servidor e o app funciona sem internet.
 | UI | Componentes próprios + `@expo/vector-icons` + `react-native-svg` (logo) + `@expo-google-fonts/inter` |
 | Build/CI | EAS Build (`eas.json`), testes com `tsx --test`, TypeScript `tsc --noEmit` |
 
-**Backend:** nenhum — a v1 é 100% local-first. A única chamada externa é a
+**Backend:** a v1 é 100% local-first. A única chamada externa é a
 consulta do código de barras às APIs públicas de produtos.
 
-## 4. Fluxo de entrada
-
-```
-Splash (~2s, logo animada) → Login (apenas o nome) → Onboarding (só na 1ª vez) → Tela principal
-```
-
-- **Splash** (`SplashScreen.tsx`): logo com fade-in, mínimo de 2s, bootstrap do app em
-  paralelo (banco, ajustes, canal de notificação) e fade-out de 350ms antes de trocar
-  de tela. O splash nativo (`expo-splash-screen`) fica visível até a fonte Inter e a
-  primeira tela estarem prontas, evitando qualquer "flash" em branco.
-- **Login** (`LoginScreen.tsx`): só o campo de nome + botão "Continuar" (desabilitado
-  com campo vazio, erro visível para espaços em branco). O nome é salvo no SQLite local
-  (`settings.user_profile`) e reconhecido nas próximas sessões.
-- **Onboarding** (`OnboardingScreen.tsx`): 4 slides curtos com swipe ou "Próximo",
-  indicador de bolinhas e "Pular" sempre visível; grava a flag
-  `settings.app_settings.onboardingDone = true` ao concluir ou pular.
-
-Regras de roteamento ficam em `src/utils/appFlow.ts` (módulo puro, coberto por testes).
-
-## 5. Telas
-
-| Tela | Arquivo |
-|---|---|
-| Splash | `src/screens/SplashScreen.tsx` |
-| Login (só nome) | `LoginScreen.tsx` |
-| Onboarding (4 slides) | `OnboardingScreen.tsx` |
-| Home "O que consumir primeiro?" | `HomeScreen.tsx` |
-| Adicionar produto (scan ou manual) | `AddProductScreen.tsx` |
-| Scanner de código de barras | `ScannerScreen.tsx` |
-| Produto encontrado | `ProductFoundScreen.tsx` |
-| Detalhes do produto | `ProductDetailsScreen.tsx` |
-| Meu estoque | `StockScreen.tsx` |
-| Histórico | `HistoryScreen.tsx` |
-| Perfil | `ProfileScreen.tsx` |
-| Notificações | `NotificationSettingsScreen.tsx` |
-| Menu lateral | `SideMenuScreen.tsx` |
-
-Extras exigidos pelo fluxo: `ManualProductScreen` (fallback quando nenhuma API
-conhece o código), `EditProductScreen`, `EditProfileScreen`, `SettingsScreen`,
-`PrivacyScreen` (LGPD) e `HelpScreen`. O formulário de cadastro
-(`ProductForm.tsx`) é compartilhado por todos os caminhos de cadastro, garantindo
-as mesmas validações.
-
-## 6. Arquitetura
-
-```
-App.tsx                     # fontes, NavigationContainer, toque em notificação, refresh no foreground
-src/
-  components/               # AppText, Button, TextField, DateField, SelectField, ProductForm,
-                            # ProductListItem, SegmentedTabs, SideDrawer, LeafDecor, Logo, Banner...
-  constants/                # categorias (ícone + cor) e frequências de lembrete
-  db/                       # database.ts (migrações) e productRepository.ts (CRUD + cache + settings)
-  navigation/               # RootNavigator, MainTabs, tipos e navigationRef
-  screens/                  # telas do app
-  services/
-    productApi.ts           # Open Food Facts + Cosmos (fetch com timeout e User-Agent)
-    productLookup.ts        # núcleo puro da cascata (provedores injetáveis)
-    productResolver.ts      # fiação com o cache SQLite
-    notificationPlanner.ts  # regras puras de agendamento
-    notifications.ts        # expo-notifications (agendar / cancelar / reagendar / envio imediato)
-  store/                    # useProductStore (produtos + agenda), useSettingsStore (perfil/ajustes)
-  theme/                    # cores, tipografia Inter, espaçamentos, sombras
-  types/, utils/            # modelos e utilitários puros (barcode, datas, categoria, id)
-tests/                      # 54 testes unitários das regras de negócio
-tools/generate-assets.mjs   # gerador dos PNGs de ícone / splash / notificação
-docs/                       # guia de build e publicação
-```
-
-## 7. Modelo de dados
-
-```
-products
-  id TEXT PK                  # prd_<timestamp36><random>
-  barcode TEXT                # normalizado (só dígitos)
-  name / image_url / category / quantity / unit
-  source                      # openfoodfacts | cosmos | manual
-  expiration_date TEXT        # yyyy-mm-dd (comparável como texto)
-  reminder_frequency          # daily | every_3_days | weekly | 1_day_before | custom
-  custom_interval_days INTEGER?
-  status                      # active | consumed | discarded | expired
-  notification_ids TEXT       # JSON com os ids das notificações pendentes
-  created_at / consumed_at / discarded_at
-
-product_cache                  # cache da resolução de GTIN (acelera próximas leituras)
-settings                       # perfil local (nome) e preferências (JSON por chave)
-```
-
-## 8. Notificações: regras implementadas
-
-- **Ancoragem retroativa na validade**: as ocorrências são
-  `validade − k × intervalo`, não "a partir de hoje".
-- **Nada depois da validade**, exceto um aviso final de "produto vencido"
-  (validade + 1 dia, configurável).
-- **Horário configurável** (padrão 09:00); horários já passados são descartados.
-- **Cancelamento**: consumir, descartar ou excluir cancela 100% dos ids
-  pendentes; editar validade/frequência cancela e reagendar do zero.
-- **Persistência pelo SO**: triggers `DATE` do `expo-notifications` (sobrevivem
-  ao fechamento do app); ids ficam em `products.notification_ids`.
-- **Orçamento do sistema**: o iOS mantém no máximo 64 notificações locais
-  pendentes. O app usa um orçamento global de 60 e redistribui o excedente
-  priorizando o que vence antes (`rebuildAllSchedules`), reexecutado no boot e
-  no retorno do background.
-
-> Nota: um trigger `DATE` por ocorrência em vez de `DAILY`/`WEEKLY` repetidos,
-> porque um trigger de repetição não pode ser interrompido na data de validade
-> nem cancelado sem que o app rode. A regra de negócio tem prioridade.
-
-## 9. Privacidade e LGPD
+## Privacidade e LGPD
 
 O ValiFood v1 foi desenhado para coletar o mínimo necessário — e praticamente
 nada sai do aparelho.
@@ -203,7 +96,7 @@ nada sai do aparelho.
 - **Crianças e dados sensíveis:** o app não coleta dados sensíveis nem é
   direcionado a crianças.
 
-## 10. Como contribuir
+## Como contribuir
 
 ### Pré-requisitos
 
@@ -259,12 +152,7 @@ node tools/generate-assets.mjs   # regenera ícones/splash a partir da geometria
 npx expo export --platform android   # valida o bundle de produção
 ```
 
-## 11. Build e publicação
-
-O guia passo a passo — do zero até o APK e a publicação no Google Play e na
-App Store — está em **[docs/GUIA_BUILD_E_PUBLICACAO.md](docs/GUIA_BUILD_E_PUBLICACAO.md)**.
-
-## 12. Roadmap pós-v1
+## Roadmap pós-v1
 
 - OCR da validade impressa (ML Kit Text Recognition).
 - Histórico de desperdício como insight/gamificação (a base já está no histórico).
